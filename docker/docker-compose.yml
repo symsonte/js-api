@@ -1,0 +1,13 @@
+version: '2'
+services:
+  php:
+    image: symsonte/php
+    container_name: symsonte_js_api_php
+    volumes:
+      - ./php/php.ini:/usr/local/etc/php/php.ini
+      - ../:/var/www/
+    environment:
+      PHP_IDE_CONFIG: "serverName=docker"
+      PHP_XDEBUG_ENABLED: 1
+      XDEBUG_CONFIG: "idekey=PHPSTORM remote_host=172.18.0.1"
+    working_dir: /var/www

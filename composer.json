@@ -1,0 +1,29 @@
+{
+    "name": "symsonte/js-api",
+    "require": {
+        "php": ">=7.1",
+        "symsonte/symsonte": "@dev"
+    },
+    "require-dev": {
+        "symfony/debug": "~3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Symsonte\\JsApi\\": [
+                "setup",
+                "src"
+            ],
+            "Symsonte\\JsApi\\Cli\\": [
+                "src/cli"
+            ]
+        }
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "git@github.com:yosmanyga/symsonte.git"
+        }
+    ],
+    "prefer-stable": true,
+    "minimum-stability": "dev"
+}
