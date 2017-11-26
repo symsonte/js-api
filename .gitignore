@@ -1,3 +1,4 @@
 /config/parameters.yml
-/var/cache/*
+var/cache/*
+!var/cache/.gitkeep
 /vendor/
