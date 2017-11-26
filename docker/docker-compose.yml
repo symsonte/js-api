@@ -1,7 +1,7 @@
 version: '2'
 services:
   php:
-    image: symsonte/php
+    image: cubalider/php
     container_name: symsonte_js_api_php
     volumes:
       - ./php/php.ini:/usr/local/etc/php/php.ini
