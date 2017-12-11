@@ -44,6 +44,7 @@ class AddFoo
      * @return string
      *
      * @throws FooException
+     * @throws BarException
      */
     public function add(
         string $name, string $price
