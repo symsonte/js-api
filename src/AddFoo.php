@@ -55,4 +55,26 @@ class AddFoo
             $controller = $this->serviceContainer->get($controller);
         }
     }
+
+    /**
+     * @http\resolution({method: "POST", path: "/remove"})
+     *
+     * @param string $name
+     *
+     * @param string $price
+     *
+     * @return string
+     *
+     * @throws RemoveException
+     */
+    public function Remove(
+        string $name, string $price
+    ) {
+        $controllers = $this->controllerFinder->all();
+
+        foreach ($controllers as $controller) {
+            list($controller, $method) = explode(':', $controller);
+            $controller = $this->serviceContainer->get($controller);
+        }
+    }
 }

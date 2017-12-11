@@ -41,28 +41,29 @@ class GenerateFiles
     public function generate()
     {
         $controllers = $this->controllerFinder->all();
-        $exceptions = [];
-        $parameters = [];
+        $fileString  = "";
 
         foreach ($controllers as $url => $controller) {
             list($controller, $method) = explode(':', $controller);
             $controller = $this->serviceContainer->get($controller);
 
             $reflector = new \ReflectionClass($controller);
-            $comment = $reflector->getMethod($method)->getDocComment();
+            $comment   = $reflector->getMethod($method)->getDocComment();
 
-            $factory = DocBlockFactory::createInstance();
+            $factory  = DocBlockFactory::createInstance();
             $docblock = $factory->create($comment);
 
             if ($docblock->hasTag('throws')) {
-                $tags = $docblock->getTagsByName('throws');
+                $tags       = $docblock->getTagsByName('throws');
+                $exceptions = [];
                 foreach ($tags as $index => $tag) {
                     $exceptions[] = $tags[$index]->getType()->getFqsen()->getName();
                 }
             }
 
             if ($docblock->hasTag('param')) {
-                $tags = $docblock->getTagsByName('param');
+                $tags       = $docblock->getTagsByName('param');
+                $parameters = [];
                 foreach ($tags as $index => $tag) {
                     $parameters[] = $tags[$index]->getVariableName();
                 }
@@ -70,9 +71,9 @@ class GenerateFiles
 
             $mustache = new \Mustache_Engine();
             $hasParam = count($parameters) > 0 ? true : false;
-            $data = [];
+            $data     = [];
             foreach ($parameters as $parameter) {
-                $data[] = $parameter . " : " . $parameter;
+                $data[] = $parameter." : ".$parameter;
             }
 
             $apiJs = $mustache->render(
@@ -106,22 +107,26 @@ class GenerateFiles
 };'
                 ,
                 array(
-                    'method' => $method,
-                    'parameters' => implode(",\n\t", $parameters),
-                    'url' => $url,
-                    'has_param' => $hasParam,
-                    'data' => implode(",\n\t", $data),
-                    'exceptionSection' => $this->generateExceptionsJsTemplate($exceptions)
-                ));
+                    'method'           => $method,
+                    'parameters'       => implode(",\n\t", $parameters),
+                    'url'              => $url,
+                    'has_param'        => $hasParam,
+                    'data'             => implode(",\n\t", $data),
+                    'exceptionSection' => $this->generateExceptionsJsTemplate($exceptions),
+                )
+            );
+
+            $fileString .= $apiJs."\n\n";
         }
 
-        return $apiJs;
+        return $fileString;
     }
 
     /**
      * Generates the exception-code based on the exception name thrown
      *
      * @param string $exception
+     *
      * @return string
      */
     private function generateExceptionCode(string $exception)
@@ -133,7 +138,9 @@ class GenerateFiles
 
     /**
      * Generates the exceptions Js section for the JS-Api Template.
+     *
      * @param array $exceptions
+     *
      * @return string
      */
     private function generateExceptionsJsTemplate(array $exceptions)
@@ -141,7 +148,7 @@ class GenerateFiles
         $template = "";
         if (count($exceptions) > 0) {
             foreach ($exceptions as $key => $exception) {
-                $code = $this->generateExceptionCode($exception);
+                $code     = $this->generateExceptionCode($exception);
                 $template .= "
                 {  
                     code: $code,
