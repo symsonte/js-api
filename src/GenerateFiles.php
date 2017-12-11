@@ -53,17 +53,17 @@ class GenerateFiles
             $factory  = DocBlockFactory::createInstance();
             $docblock = $factory->create($comment);
 
+            $exceptions = [];
             if ($docblock->hasTag('throws')) {
-                $tags       = $docblock->getTagsByName('throws');
-                $exceptions = [];
+                $tags = $docblock->getTagsByName('throws');
                 foreach ($tags as $index => $tag) {
                     $exceptions[] = $tags[$index]->getType()->getFqsen()->getName();
                 }
             }
 
+            $parameters = [];
             if ($docblock->hasTag('param')) {
-                $tags       = $docblock->getTagsByName('param');
-                $parameters = [];
+                $tags = $docblock->getTagsByName('param');
                 foreach ($tags as $index => $tag) {
                     $parameters[] = $tags[$index]->getVariableName();
                 }
@@ -72,10 +72,11 @@ class GenerateFiles
             $mustache = new \Mustache_Engine();
             $hasParam = count($parameters) > 0 ? true : false;
             $data     = [];
-            foreach ($parameters as $parameter) {
-                $data[] = $parameter." : ".$parameter;
+            if (count($parameters) > 0) {
+                foreach ($parameters as $parameter) {
+                    $data[] = $parameter." : ".$parameter;
+                }
             }
-
             $apiJs = $mustache->render(
                 'const {{method}} = (
         {{#has_param}}
@@ -151,9 +152,9 @@ class GenerateFiles
                 $code     = $this->generateExceptionCode($exception);
                 $template .= "
                 {  
-                    code: $code,
+                    code: '$code',
                     callback: () => {
-                        $exception();
+                       on$exception();
                     } 
                 }";
                 if ($key < count($exceptions) - 1) {
