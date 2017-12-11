@@ -1,0 +1,28 @@
+const {{method}} = (
+    {{#has_param}}
+    {{parameters}},
+    {{/has_param}}
+    onSuccess
+) => {
+    request(
+        'POST',
+        '{{ url}}',
+        null,
+        {
+            {{#has_param}}
+            {{data}}
+            {{/has_param}}
+        },
+    (response) => {
+        handle(response, [
+            {
+                code: 'success',
+                callback: (payload) => {
+                    onSuccess(payload);
+                }
+            },
+        {{{exceptionSection}}}
+        ]);
+    }
+    );
+};

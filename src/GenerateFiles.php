@@ -69,44 +69,23 @@ class GenerateFiles
                 }
             }
 
-            $mustache = new \Mustache_Engine();
-            $hasParam = count($parameters) > 0 ? true : false;
-            $data     = [];
             if (count($parameters) > 0) {
                 foreach ($parameters as $parameter) {
                     $data[] = $parameter." : ".$parameter;
                 }
             }
+
+            $mustache = new \Mustache_Engine(
+                array(
+                    'loader' => new \Mustache_Loader_FilesystemLoader(dirname(__FILE__).'/mustache-templates'),
+                )
+            );
+
+            $hasParam = count($parameters) > 0 ? true : false;
+            $data     = [];
+
             $apiJs = $mustache->render(
-                'const {{method}} = (
-        {{#has_param}}
-        {{parameters}},
-        {{/has_param}}                            
-        onSuccess 
-) => {
-    request(
-        \'POST\',
-        \'{{ url}}\',
-        null,
-        {
-        {{#has_param}}
-        {{data}}
-        {{/has_param}}
-        },
-        (response) => {
-            handle(response, [
-                {
-                    code: \'success\',
-                    callback: (payload) => {
-                        onSuccess(payload);
-                    }
-                },
-                {{{exceptionSection}}} 
-            ]);
-        }
-    );
-};'
-                ,
+                'js-api',
                 array(
                     'method'           => $method,
                     'parameters'       => implode(",\n\t", $parameters),
@@ -117,7 +96,7 @@ class GenerateFiles
                 )
             );
 
-            $fileString .= $apiJs."\n\n";
+            $fileString .= $apiJs;
         }
 
         return $fileString;
@@ -151,12 +130,12 @@ class GenerateFiles
             foreach ($exceptions as $key => $exception) {
                 $code     = $this->generateExceptionCode($exception);
                 $template .= "
-                {  
-                    code: '$code',
-                    callback: () => {
-                       on$exception();
-                    } 
-                }";
+            {  
+                code: '$code',
+                callback: () => {
+                   on$exception();
+                } 
+            }";
                 if ($key < count($exceptions) - 1) {
                     $template .= ",";
                 }
