@@ -8,7 +8,7 @@ use Symsonte\Service\Container;
 /**
  * @di\service()
  */
-class AddFoo
+class RemoveFoo
 {
     /**
      * @var NikicFastRouteFinder
@@ -35,24 +35,16 @@ class AddFoo
     }
 
     /**
-     * @http\resolution({method: "POST", path: "/add-foo"})
+     * @http\resolution({method: "POST", path: "/remove-foo"})
      *
-     * @param string $name
-     *
-     * @param string $price
+     * @param string $id
      *
      * @return string
      *
-     * @throws FooException
      */
-    public function add(
-        string $name, string $price
+    public function remove(
+        string $id
     ) {
-        $controllers = $this->controllerFinder->all();
-
-        foreach ($controllers as $controller) {
-            list($controller, $method) = explode(':', $controller);
-            $controller = $this->serviceContainer->get($controller);
-        }
+        return 'Removed Foo with id: '.$id;
     }
 }
