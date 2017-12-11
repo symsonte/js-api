@@ -2,7 +2,9 @@
     "name": "symsonte/js-api",
     "require": {
         "php": ">=7.1",
-        "symsonte/symsonte": "@dev"
+        "symsonte/symsonte": "@dev",
+        "mustache/mustache": "^2.12",
+        "phpdocumentor/reflection-docblock": "~2.0"
     },
     "require-dev": {
         "symfony/debug": "~3"

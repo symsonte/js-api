@@ -39,12 +39,14 @@ class AddFoo
      *
      * @param string $name
      *
+     * @param string $price
+     *
      * @return string
      *
      * @throws FooException
      */
     public function add(
-        string $name
+        string $name, string $price
     ) {
         $controllers = $this->controllerFinder->all();
 
