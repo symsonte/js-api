@@ -81,7 +81,7 @@ class GenerateCode
 
             $mustache = new \Mustache_Engine(
                 array(
-                    'loader' => new \Mustache_Loader_FilesystemLoader(dirname(__FILE__).'/mustache-templates'),
+                    'loader' => new \Mustache_Loader_FilesystemLoader(dirname(__FILE__).'/templates'),
                 )
             );
 
