@@ -9,7 +9,7 @@ use Symsonte\Service\Container;
 /**
  * @di\service()
  */
-class GenerateFiles
+class GenerateCode
 {
     /**
      * @var NikicFastRouteFinder
@@ -36,7 +36,7 @@ class GenerateFiles
     }
 
     /**
-     * @cli\resolution({command: "/generate-files"})
+     * @cli\resolution({command: "/generate-code"})
      */
     public function generate()
     {
