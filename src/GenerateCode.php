@@ -58,7 +58,9 @@ class GenerateCode
                 $tags = $docblock->getTagsByName('throws');
                 foreach ($tags as $index => $tag) {
                     $exceptions[$index]['name'] = $tags[$index]->getType()->getFqsen()->getName();
-                    $exceptions[$index]['code'] = $this->generateExceptionCode($tags[$index]->getType()->getFqsen()->getName());
+                    $exceptions[$index]['code'] = $this->generateExceptionCode(
+                        $tags[$index]->getType()->getFqsen()->getName()
+                    );
                 }
             }
 
