@@ -1,7 +1,7 @@
 const {{method}} = (
-    {{#has_param}}
-    {{parameters}},
-    {{/has_param}}
+    {{#parameters}}
+    {{.}},
+    {{/parameters}}
     onSuccess
 ) => {
     request(
@@ -9,9 +9,9 @@ const {{method}} = (
         '{{ url}}',
         null,
         {
-            {{#has_param}}
-            {{data}}
-            {{/has_param}}
+            {{#data}}
+            {{.}}
+            {{/data}}
         },
     (response) => {
         handle(response, [
@@ -20,8 +20,13 @@ const {{method}} = (
                 callback: (payload) => {
                     onSuccess(payload);
                 }
-            },
-        {{{exceptionSection}}}
+            }{{#exceptions}},
+            {
+                code: '{{code}}',
+                callback: () => {
+                    on{{name}}();
+                }
+            }{{/exceptions}}
         ]);
     }
     );

@@ -57,7 +57,8 @@ class GenerateFiles
             if ($docblock->hasTag('throws')) {
                 $tags = $docblock->getTagsByName('throws');
                 foreach ($tags as $index => $tag) {
-                    $exceptions[] = $tags[$index]->getType()->getFqsen()->getName();
+                    $exceptions[$index]['name'] = $tags[$index]->getType()->getFqsen()->getName();
+                    $exceptions[$index]['code'] = $this->generateExceptionCode($tags[$index]->getType()->getFqsen()->getName());
                 }
             }
 
@@ -69,6 +70,7 @@ class GenerateFiles
                 }
             }
 
+            $data = [];
             if (count($parameters) > 0) {
                 foreach ($parameters as $parameter) {
                     $data[] = $parameter." : ".$parameter;
@@ -81,18 +83,14 @@ class GenerateFiles
                 )
             );
 
-            $hasParam = count($parameters) > 0 ? true : false;
-            $data     = [];
-
             $apiJs = $mustache->render(
                 'js-api',
                 array(
-                    'method'           => $method,
-                    'parameters'       => implode(",\n\t", $parameters),
-                    'url'              => $url,
-                    'has_param'        => $hasParam,
-                    'data'             => implode(",\n\t", $data),
-                    'exceptionSection' => $this->generateExceptionsJsTemplate($exceptions),
+                    'method'     => $method,
+                    'url'        => $url,
+                    'parameters' => $parameters,
+                    'data'       => $data,
+                    'exceptions' => $exceptions,
                 )
             );
 
@@ -116,32 +114,4 @@ class GenerateFiles
         return $exceptionCode;
     }
 
-    /**
-     * Generates the exceptions Js section for the JS-Api Template.
-     *
-     * @param array $exceptions
-     *
-     * @return string
-     */
-    private function generateExceptionsJsTemplate(array $exceptions)
-    {
-        $template = "";
-        if (count($exceptions) > 0) {
-            foreach ($exceptions as $key => $exception) {
-                $code     = $this->generateExceptionCode($exception);
-                $template .= "
-            {  
-                code: '$code',
-                callback: () => {
-                   on$exception();
-                } 
-            }";
-                if ($key < count($exceptions) - 1) {
-                    $template .= ",";
-                }
-            }
-        }
-
-        return $template;
-    }
 }
