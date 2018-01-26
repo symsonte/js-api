@@ -2,7 +2,11 @@
 
 namespace Symsonte\JsApi;
 
+use phpDocumentor\Reflection\DocBlock\Tags\Param;
+use phpDocumentor\Reflection\DocBlock\Tags\Throws;
 use phpDocumentor\Reflection\DocBlockFactory;
+use phpDocumentor\Reflection\Types\Object_;
+use Symsonte\Authorization\Checker;
 use Symsonte\Http\Server\Request\Resolution\NikicFastRouteFinder;
 use Symsonte\Service\Container;
 
@@ -17,12 +21,18 @@ class GenerateCode
     private $controllerFinder;
 
     /**
+     * @var Checker
+     */
+    private $authorizationChecker;
+
+    /**
      * @var Container
      */
     private $serviceContainer;
 
     /**
      * @param NikicFastRouteFinder $controllerFinder
+     * @param Checker              $authorizationChecker
      * @param Container            $serviceContainer
      *
      * @di\arguments({
@@ -31,84 +41,115 @@ class GenerateCode
      */
     public function __construct(
         NikicFastRouteFinder $controllerFinder,
+        Checker $authorizationChecker,
         Container $serviceContainer
     ) {
         $this->controllerFinder = $controllerFinder;
+        $this->authorizationChecker = $authorizationChecker;
         $this->serviceContainer = $serviceContainer;
     }
 
     /**
      * @cli\resolution({command: "/generate-code"})
+     *
+     * @param string $prefix
+     *
+     * @return string
      */
-    public function generate()
+    public function generate($prefix = null)
     {
-        $controllers = $this->controllerFinder->all();
-        $fileString = "";
+        $mustache = new \Mustache_Engine(
+            [
+                'loader' => new \Mustache_Loader_FilesystemLoader(
+                    __DIR__ . '/templates'
+                ),
+                'partials_loader' => new \Mustache_Loader_FilesystemLoader(
+                    __DIR__ . '/templates/partials')
+            ]
+        );
 
+        $controllers = $this->controllerFinder->all();
+
+        $functions = [];
         foreach ($controllers as $url => $controller) {
+            $auth = $this->authorizationChecker->has($controller);
+
             list($controller, $method) = explode(':', $controller);
+
             $controller = $this->serviceContainer->get($controller);
 
             $reflector = new \ReflectionClass($controller);
-            $comment = $reflector->getMethod($method)->getDocComment();
 
-            $factory = DocBlockFactory::createInstance();
-            $docblock = $factory->create($comment);
+            $name = $this->generateNameCode(
+                $reflector->getName(),
+                $prefix
+            );
+
+            $docBlock = (DocBlockFactory::createInstance())->create(
+                $reflector->getMethod($method)->getDocComment()
+            );
 
             $exceptions = [];
-            if ($docblock->hasTag('throws')) {
-                $tags = $docblock->getTagsByName('throws');
-                foreach ($tags as $index => $tag) {
-                    $exceptions[$index]['name'] = $tags[$index]->getType()
-                        ->getFqsen()->getName();
-                    $exceptions[$index]['code'] = $this->generateExceptionCode(
-                        $tags[$index]->getType()->getFqsen()->getName()
-                    );
+            if ($docBlock->hasTag('throws')) {
+                /** @var Throws[] $tags */
+                $tags = $docBlock->getTagsByName('throws');
+                foreach ($tags as $tag) {
+                    /** @var Object_ $type */
+                    $type = $tag->getType();
+
+                    $exceptions[] = [
+                        'code' => $this->generateExceptionCode(
+                            $type->getFqsen()->getName()
+                        ),
+                        'name' => $type->getFqsen()->getName()
+                    ];
                 }
             }
 
             $parameters = [];
-            if ($docblock->hasTag('param')) {
-                $tags = $docblock->getTagsByName('param');
-                foreach ($tags as $index => $tag) {
-                    $parameters[] = $tags[$index]->getVariableName();
+            if ($docBlock->hasTag('param')) {
+                /** @var Param[] $tags */
+                $tags = $docBlock->getTagsByName('param');
+                foreach ($tags as $tag) {
+                    $parameters[] = $tag->getVariableName();
                 }
             }
 
-            $data = [];
-            if (count($parameters) > 0) {
-                foreach ($parameters as $parameter) {
-                    $data[] = $parameter." : ".$parameter;
-                }
-            }
-
-            $mustache = new \Mustache_Engine(
-                [
-                    'loader' => new \Mustache_Loader_FilesystemLoader(
-                        __DIR__.'/templates'
-                    ),
-                ]
-            );
-
-            $apiJs = $mustache->render(
-                'js-api',
-                [
-                    'method'     => $method,
-                    'url'        => $url,
-                    'parameters' => $parameters,
-                    'data'       => $data,
-                    'exceptions' => $exceptions,
-                ]
-            );
-
-            $fileString .= $apiJs;
+            $functions[] = [
+                'name' => $name,
+                'url' => $url,
+                'auth' => $auth,
+                'parameters' => $parameters,
+                'exceptions' => $exceptions,
+            ];
         }
 
-        return $fileString;
+        $api = $mustache->render(
+            'root',
+            [
+                'functions' => $functions,
+            ]
+        );
+
+        return $api;
     }
 
     /**
-     * Generates the exception-code based on the exception name thrown
+     * @param string $name
+     * @param string $prefix
+     *
+     * @return string
+     */
+    private function generateNameCode($name, $prefix) {
+        $name = str_replace("\\", '', $name);
+
+        $name = str_replace($prefix, '', $name);
+
+        return $name;
+    }
+
+    /**
+     * Generates a code for given exception based on its name
      *
      * @param string $exception
      *
@@ -116,15 +157,19 @@ class GenerateCode
      */
     private function generateExceptionCode(string $exception)
     {
-        $exceptionCode = strtolower(
-            str_replace(
-                ' ',
-                '-',
-                trim(preg_replace("([A-Z])", " $0", $exception))
-            )
+        $exception = str_replace(
+            ' ', '-', trim(preg_replace("([A-Z])", " $0", $exception))
         );
 
-        return $exceptionCode;
+        $exception = str_replace(
+            '-Exception', '', $exception
+        );
+
+        $exception = strtolower(
+            $exception
+        );
+
+        return $exception;
     }
 
 }

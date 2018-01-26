@@ -9,6 +9,7 @@ class CollectFoos
 {
     /**
      * @http\resolution({method: "POST", path: "/collect-foos"})
+     * @domain\authorization({roles: ["owner", "operator"]})
      *
      */
     public function collect()

@@ -1,0 +1,39 @@
+const {{name}} = (
+    {{#parameters}}
+    {{.}},
+    {{/parameters}}
+    onSuccess,
+{{#exceptions}}
+    on{{name}},
+{{/exceptions}}
+) => {
+    request(
+        'POST',
+        '{{url}}',
+        {{#auth}}token{{/auth}}{{^auth}}null{{/auth}},
+        {
+{{#parameters}}
+            {{.}}: {{.}}
+{{/parameters}}
+        },
+        (response) => {
+            handle(response, [
+                {
+                    code: 'success',
+                    callback: (payload) => {
+                        onSuccess(payload);
+                    }
+                },
+{{#exceptions}}
+                {
+                    code: '{{code}}',
+                    callback: () => {
+                        on{{name}}();
+                    }
+                },
+{{/exceptions}}
+            ]);
+        }
+    );
+};
+

@@ -4,7 +4,7 @@
         "php": ">=7.1",
         "symsonte/symsonte": "@dev",
         "mustache/mustache": "^2.12",
-        "phpdocumentor/reflection-docblock": "~2.0"
+        "phpdocumentor/reflection-docblock": "~4.3"
     },
     "require-dev": {
         "symfony/debug": "~3"
