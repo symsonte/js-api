@@ -3,3 +3,9 @@ import {request, handle} from '@cubalider/request';
 {{#functions}}
 {{>function}}
 {{/functions}}
+
+export {
+{{#functions}}
+    {{name}},
+{{/functions}}
+};

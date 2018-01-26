@@ -140,7 +140,8 @@ class GenerateCode
      *
      * @return string
      */
-    private function generateNameCode($name, $prefix) {
+    private function generateNameCode($name, $prefix)
+    {
         $name = str_replace("\\", '', $name);
 
         $name = str_replace($prefix, '', $name);
