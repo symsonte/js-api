@@ -50,8 +50,6 @@ class GenerateCode
     }
 
     /**
-     * @cli\resolution({command: "/generate-code"})
-     *
      * @param string $prefix
      *
      * @return string
@@ -162,13 +160,7 @@ class GenerateCode
             ' ', '-', trim(preg_replace("([A-Z])", " $0", $exception))
         );
 
-        $exception = str_replace(
-            '-Exception', '', $exception
-        );
-
-        $exception = strtolower(
-            $exception
-        );
+        $exception = strtolower($exception);
 
         return $exception;
     }
