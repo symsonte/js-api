@@ -14,9 +14,6 @@
             "Symsonte\\JsApi\\": [
                 "setup",
                 "src"
-            ],
-            "Symsonte\\JsApi\\Cli\\": [
-                "src/cli"
             ]
         }
     },
