@@ -2,8 +2,8 @@
     "name": "symsonte/js-api",
     "require": {
         "php": ">=7.1",
+        "ext-json": "*",
         "symsonte/framework": "@dev",
-        "mustache/mustache": "^2.12",
         "phpdocumentor/reflection-docblock": "~4.3"
     },
     "require-dev": {

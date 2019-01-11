@@ -2,13 +2,18 @@
 
 namespace Symsonte\JsApi;
 
+use phpDocumentor\Reflection\DocBlock\Description;
+use phpDocumentor\Reflection\DocBlock\Tags\Generic;
 use phpDocumentor\Reflection\DocBlock\Tags\Param;
 use phpDocumentor\Reflection\DocBlock\Tags\Throws;
 use phpDocumentor\Reflection\DocBlockFactory;
 use phpDocumentor\Reflection\Types\Object_;
-use Symsonte\Authorization\Checker;
-use Symsonte\Http\Server\Request\Resolution\NikicFastRouteFinder;
+use Symsonte\AuthorizationChecker;
+use Symsonte\Http\Resolution\Finder;
 use Symsonte\Service\Container;
+use ReflectionClass;
+use ReflectionException;
+use LogicException;
 
 /**
  * @di\service()
@@ -16,12 +21,12 @@ use Symsonte\Service\Container;
 class GenerateCode
 {
     /**
-     * @var NikicFastRouteFinder
+     * @var Finder
      */
     private $controllerFinder;
 
     /**
-     * @var Checker
+     * @var AuthorizationChecker
      */
     private $authorizationChecker;
 
@@ -31,44 +36,52 @@ class GenerateCode
     private $serviceContainer;
 
     /**
-     * @param NikicFastRouteFinder $controllerFinder
-     * @param Checker              $authorizationChecker
+     * @var RenderCode
+     */
+    private $renderCode;
+
+    /**
+     * @param Finder               $controllerFinder
+     * @param AuthorizationChecker $authorizationChecker
      * @param Container            $serviceContainer
+     * @param RenderCode           $renderCode
      *
      * @di\arguments({
-     *     serviceContainer: "@symsonte.service_kit.container"
+     *     serviceContainer: "@symsonte.service.container"
      * })
      */
     public function __construct(
-        NikicFastRouteFinder $controllerFinder,
-        Checker $authorizationChecker,
-        Container $serviceContainer
+        Finder $controllerFinder,
+        AuthorizationChecker $authorizationChecker,
+        Container $serviceContainer,
+        RenderCode $renderCode
     ) {
         $this->controllerFinder = $controllerFinder;
         $this->authorizationChecker = $authorizationChecker;
         $this->serviceContainer = $serviceContainer;
+        $this->renderCode = $renderCode;
     }
 
     /**
      * @param string $prefix
+     * @param array  $server
      *
      * @return string
      */
-    public function generate($prefix = null)
-    {
-        $mustache = new \Mustache_Engine(
-            [
-                'loader' => new \Mustache_Loader_FilesystemLoader(
-                    __DIR__ . '/templates'
-                ),
-                'partials_loader' => new \Mustache_Loader_FilesystemLoader(
-                    __DIR__ . '/templates/partials')
-            ]
-        );
+    public function generate(
+        string $prefix,
+        array $server
+    ) {
+//        $prefix = sprintf('%s\\', $prefix);
 
         $controllers = $this->controllerFinder->all();
 
-        $functions = [];
+        ksort($controllers);
+
+        $all = [
+            'root' => [],
+            'inside' => []
+        ];
         foreach ($controllers as $url => $controller) {
             $auth = $this->authorizationChecker->has($controller);
 
@@ -76,16 +89,30 @@ class GenerateCode
 
             $controller = $this->serviceContainer->get($controller);
 
-            $reflector = new \ReflectionClass($controller);
+            try {
+                $reflector = new ReflectionClass($controller);
+            } catch (ReflectionException $e) {
+                throw new LogicException(null, null, $e);
+            }
 
-            $name = $this->generateNameCode(
-                $reflector->getName(),
-                $prefix
-            );
+            try {
+                $docBlock = (DocBlockFactory::createInstance())->create(
+                    $reflector->getMethod($method)->getDocComment()
+                );
+            } catch (ReflectionException $e) {
+                throw new LogicException(null, null, $e);
+            }
 
-            $docBlock = (DocBlockFactory::createInstance())->create(
-                $reflector->getMethod($method)->getDocComment()
-            );
+            $cache = null;
+            if ($docBlock->hasTag('cache')) {
+                /** @var Generic $tag */
+                $tag = $docBlock->getTagsByName('cache')[0];
+                /** @var Description $description */
+                $cache = $tag->getDescription()->render();
+                $cache = str_replace(['(', ')'], '', $cache);
+                $cache = json_decode($cache, true);
+                $cache = $cache['expiry'];
+            }
 
             $exceptions = [];
             if ($docBlock->hasTag('throws')) {
@@ -97,7 +124,9 @@ class GenerateCode
 
                     $exceptions[] = [
                         'code' => $this->generateExceptionCode(
-                            $type->getFqsen()->getName()
+                            $prefix,
+                            $reflector->getNamespaceName(),
+                            $type->getFqsen()
                         ),
                         'name' => $type->getFqsen()->getName()
                     ];
@@ -109,55 +138,134 @@ class GenerateCode
                 /** @var Param[] $tags */
                 $tags = $docBlock->getTagsByName('param');
                 foreach ($tags as $tag) {
-                    $parameters[] = $tag->getVariableName();
+                    $parameters[$tag->getVariableName()] = $tag->getVariableName();
                 }
             }
 
-            $functions[] = [
-                'name' => $name,
-                'url' => $url,
-                'auth' => $auth,
-                'parameters' => $parameters,
-                'exceptions' => $exceptions,
-            ];
+            /* Remove domain parameters, like ip and session */
+
+            if ($docBlock->hasTag('domain\parameter')) {
+                /** @var Param[] $tags */
+                $tags = $docBlock->getTagsByName('domain\parameter');
+                foreach ($tags as $tag) {
+                    $description = (string) $tag->getDescription();
+                    $description = substr(strstr($description, '('), 1, -1);
+                    $description = json_decode($description, true);
+
+                    if (!in_array(
+                        $description['value'],
+                        [
+                            'http\request\ip',
+                            'http\request\user',
+                            'http\request\session',
+                        ]
+                    )) {
+                        continue;
+                    }
+
+                    unset($parameters[$description['name']]);
+                }
+            }
+
+            // Split namespace
+            $parts = explode(
+                '\\',
+                str_replace(
+                    sprintf("%s\\", $prefix),
+                    '',
+                    $reflector->getName()
+                )
+            );
+
+            $functions = $this->resolve(
+                $parts,
+                [
+                    'url' => $url,
+                    'session' => 'session',
+                    'auth' => $auth,
+                    'parameters' => $parameters,
+                    'exceptions' => $exceptions,
+                    'cache' => $cache
+                ]
+            );
+
+            $current = current($functions);
+
+            // Is a function at root level?
+            if (isset($current['url'])) {
+                $all['root'] = array_merge(
+                    $all['root'],
+                    $functions
+                );
+            }
+            // Is a function from inside
+            else {
+                $all['inside'] = array_merge_recursive(
+                    $all['inside'],
+                    $functions
+                );
+            }
+
+            unset($current);
         }
 
-        $api = $mustache->render(
-            'root',
-            [
-                'functions' => $functions,
-            ]
+        $functions = array_merge(
+            $all['root'],
+            $all['inside']
         );
 
-        return $api;
+        $render = $this->renderCode->render($functions, $server);
+
+        return $render;
     }
 
     /**
-     * @param string $name
-     * @param string $prefix
+     * @param array $parts
+     * @param array $data
      *
-     * @return string
+     * @return array
      */
-    private function generateNameCode($name, $prefix)
+    private function resolve($parts, $data)
     {
-        $name = str_replace("\\", '', $name);
+        // Is a function from inside?
+        if (count($parts) > 1) {
+            $part = array_shift($parts);
 
-        $name = str_replace($prefix, '', $name);
+            // Recursive call
+            $function[lcfirst($part)] = $this->resolve($parts, $data);
 
-        return $name;
+            return $function;
+        }
+
+        // Is a function at root level
+
+        $function[$this->generateName($data['url'], $parts[0])] = $data;
+
+        return $function;
     }
 
     /**
      * Generates a code for given exception based on its name
      *
+     * @param string $prefix
+     * @param string $name
      * @param string $exception
      *
      * @return string
      */
-    private function generateExceptionCode(string $exception)
-    {
-        $exception = str_replace(
-            ' ', '-', trim(preg_replace("([A-Z])", " $0", $exception))
+    private function generateExceptionCode(
+        string $prefix,
+        string $namespace,
+        string $exception
+    ) {
+        $exception = sprintf('%s%s', $namespace, $exception);
+
+        $exception = str_replace(sprintf("%s\\", $prefix), '', $exception);
+
+        $exception = strtr(
+            preg_replace('/(?<=[a-zA-Z0-9])[A-Z]/', '-\\0', $exception),
+            '\\',
+            '.'
         );
 
         $exception = strtolower($exception);
@@ -165,4 +273,28 @@ class GenerateCode
         return $exception;
     }
 
+    /**
+     * @param string $url
+     * @param string $name
+     *
+     * @return string
+     */
+    private function generateName(string $url, string $name)
+    {
+        $url = substr($url, strrpos($url, '/') + 1);
+
+        $url = str_replace('-', ' ', $url);
+
+        $url = ucwords($url);
+
+        $url = str_replace(' ', '', $url);
+
+        $url = lcfirst($url);
+
+        if ($url === '') {
+            $url = lcfirst($name);
+        }
+
+        return $url;
+    }
 }
