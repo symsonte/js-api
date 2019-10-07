@@ -2,14 +2,18 @@
 
 ## Init (first time)
 
-cd js-api
+cd code
 
-docker run --rm --interactive --tty --volume $PWD:/app composer install --no-interaction --prefer-dist --ignore-platform-reqs --no-scripts
+composer update
 
-docker-compose -f docker/docker-compose.yml up -d
+cd test
 
-cp config/parameters.dist.yml config/parameters.yml
+docker-compose -f docker/all.yml up -d
 
-chmod a+w var/cache
+docker exec -it symsonte_js_api_php sh
 
+cd test
+rm -rf var/cache/*
+php bin/app.php /render-api
 
+docker-compose -f docker/all.yml stop

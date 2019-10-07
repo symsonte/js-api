@@ -1,9 +1,7 @@
-symsonte.js_api.cli.server.command_dispatcher:
-    class: 'Symsonte\Cli\Server\CommandDispatcher'
-    arguments:
-        - '@symsonte.service_kit.resource.cached_loader'
-        - '#symsonte.resource.builder'
-        - '@symsonte.service_kit.container'
-        - '@symsonte.cli.server.input.resolution.ordinary_finder'
-        - '@symsonte.js_api.cli.command_caller'
-        - '@symsonte.cli.server'
+aliases:
+    symsonte.caller: symsonte.ordinary_caller
+    symsonte.authorization.role_collector: symsonte.js_api.test.role_collector
+#    symsonte.js_api.api.tokenize_function: symsonte.js_api.ordinary_api.tokenize_function
+#    symsonte.js_api.api.tokenize_function: symsonte.js_api.collect_cache_api.tokenize_function
+    symsonte.js_api.api.tokenize_function: symsonte.js_api.api.delegator_tokenize_function
+    symsonte.js_api.tokenize_api: symsonte.js_api.wrapper_tokenize_api

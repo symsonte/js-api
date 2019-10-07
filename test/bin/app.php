@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__.'/../vendor/autoload.php';
+require_once __DIR__.'/../../vendor/autoload.php';
 
 use Symfony\Component\Debug\Debug;
 use Symsonte\Cli\App;
@@ -12,9 +12,8 @@ $app = new App(new PerpetualCachedContainer(
     sprintf('%s/../config/parameters.yml', __DIR__),
     [],
     sprintf('%s/../var/cache', __DIR__),
-    ['Symsonte', 'Symsonte']
+    ['Yosmy\\', 'Symsonte\\']
 ));
 $app->execute(
-    'symsonte.js_api.cli.server.command_dispatcher',
-    sprintf('%s/../src', __DIR__)
+    'symsonte.cli.server.command_dispatcher'
 );

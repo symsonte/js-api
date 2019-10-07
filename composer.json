@@ -16,6 +16,14 @@
             ]
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Symsonte\\JsApi\\Test\\": [
+                "test/setup",
+                "test/src"
+            ]
+        }
+    },
     "repositories": [
         {
             "type": "composer",

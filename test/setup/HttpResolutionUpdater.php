@@ -1,8 +1,8 @@
 <?php
 
-namespace Symsonte\JsApi;
+namespace Symsonte\JsApi\Test;
 
-use Symsonte\Http\Server\Request\Resolution\Resource\Loader;
+use Symsonte\Http\Resolution\Resource\Loader;
 use Symsonte\Service\ConstructorDeclaration;
 use Symsonte\Service\Declaration\Call;
 use Symsonte\Service\Declaration\ObjectArgument;
@@ -23,7 +23,7 @@ class HttpResolutionUpdater implements Updater
      * @param Loader $loader
      *
      * @ds\arguments({
-     *     loader: "@symsonte.http.server.request.resolution.resource.loader"
+     *     loader: "@symsonte.http.resolution.resource.loader"
      * })
      */
     public function __construct(
@@ -39,7 +39,7 @@ class HttpResolutionUpdater implements Updater
      */
     public function update(Declaration $declaration)
     {
-        if (!$declaration->is('symsonte.http.server.request.resolution.nikic_fast_route_finder')) {
+        if (!$declaration->is('symsonte.http.resolution.finder')) {
             return $declaration;
         }
 
@@ -67,6 +67,7 @@ class HttpResolutionUpdater implements Updater
             $declaration->isDeductible(),
             $declaration->isPrivate(),
             $declaration->isDisposable(),
+            $declaration->isLazy(),
             $declaration->getTags(),
             $declaration->getAliases(),
             $declaration->getCircularCalls()
