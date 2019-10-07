@@ -1,6 +1,6 @@
 <?php
 
-namespace Symsonte\JsApi;
+namespace Symsonte\JsApi\Test;
 
 use Symsonte\Resource\DelegatorBuilder;
 use Symsonte\ServiceKit\Declaration\Bag;
@@ -8,7 +8,7 @@ use Symsonte\ServiceKit\Declaration\Bag\Builder;
 use Symsonte\ServiceKit\Resource\Loader;
 
 /**
- * @ds\service({tags: ['symsonte.service_kit.declaration.bag.builder']})
+ * @ds\service({tags: [{key: 'last', name: 'symsonte.service_kit.declaration.bag.builder'}]})
  */
 class ServiceBuilder implements Builder
 {
@@ -42,24 +42,27 @@ class ServiceBuilder implements Builder
     /**
      * {@inheritdoc}
      */
-    public function build()
+    public function build(Bag $bag)
     {
-        return new Bag(
-            array_merge(
-                $this->loader
-                    ->load($this->builder->build([
-                        'dir' => sprintf('%s/../src', __DIR__),
-                        'filter' => '*.php',
-                        'extra' => [
-                            'type' => 'annotation',
-                            'annotation' => '/^di\\\\/'
-                        ]
-                    ]))
-                    ->getDeclarations(),
-                $this->loader->load($this->builder->build([
-                    'file' => sprintf('%s/services.yml', __DIR__),
-                ]))->getDeclarations()
-            )
+        $bag = $this->loader->load(
+            $this->builder->build([
+                'dir' => sprintf('%s/../src', __DIR__),
+                'filter' => '*.php',
+                'extra' => [
+                    'type' => 'annotation',
+                    'annotation' => '/^di\\\\/'
+                ]
+            ]),
+            $bag
         );
+
+        $bag = $this->loader->load(
+            $this->builder->build([
+                'file' => sprintf('%s/services.yml', __DIR__),
+            ]),
+            $bag
+        );
+
+        return $bag;
     }
 }

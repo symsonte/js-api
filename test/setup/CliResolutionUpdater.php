@@ -1,6 +1,6 @@
 <?php
 
-namespace Symsonte\JsApi;
+namespace Symsonte\JsApi\Test;
 
 use Symsonte\Cli\Server\Input\Resolution\Resource\Loader;
 use Symsonte\Service\ConstructorDeclaration;
@@ -39,7 +39,7 @@ class CliResolutionUpdater implements Updater
      */
     public function update(Declaration $declaration)
     {
-        if (!$declaration->is('symsonte.cli.server.input.resolution.ordinary_finder')) {
+        if (!$declaration->is('symsonte.cli.server.input.resolution.finder')) {
             return $declaration;
         }
 
@@ -57,7 +57,7 @@ class CliResolutionUpdater implements Updater
                             'type' => 'annotation',
                             'annotation' => '/^cli\\\\resolution/'
                         ]
-                    ]))
+                    ])),
                 ]
             )
         );
@@ -67,6 +67,7 @@ class CliResolutionUpdater implements Updater
             $declaration->isDeductible(),
             $declaration->isPrivate(),
             $declaration->isDisposable(),
+            $declaration->isLazy(),
             $declaration->getTags(),
             $declaration->getAliases(),
             $declaration->getCircularCalls()

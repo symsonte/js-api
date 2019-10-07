@@ -1,6 +1,6 @@
 <?php
 
-namespace Symsonte\JsApi;
+namespace Symsonte\JsApi\Test;
 
 use Symsonte\Authorization\Resource\Loader;
 use Symsonte\ServiceKit\Declaration;
@@ -40,7 +40,7 @@ class AuthorizationUpdater implements Updater
      */
     public function update(Declaration $declaration)
     {
-        if (!$declaration->is('symsonte.authorization.checker')) {
+        if (!$declaration->is('symsonte.authorization_checker')) {
             return $declaration;
         }
 
@@ -68,6 +68,7 @@ class AuthorizationUpdater implements Updater
             $declaration->isDeductible(),
             $declaration->isPrivate(),
             $declaration->isDisposable(),
+            $declaration->isLazy(),
             $declaration->getTags(),
             $declaration->getAliases(),
             $declaration->getCircularCalls()
