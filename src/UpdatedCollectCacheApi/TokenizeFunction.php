@@ -3,6 +3,7 @@
 namespace Symsonte\JsApi\UpdatedCollectCacheApi;
 
 use Symsonte\JsApi\Api;
+use Symsonte\JsApi\CalculateExpiry;
 use Symsonte\JsApi\OrdinaryApi;
 use LogicException;
 
@@ -17,12 +18,20 @@ class TokenizeFunction implements Api\TokenizeFunction
     private $tokenizeFunction;
 
     /**
+     * @var CalculateExpiry
+     */
+    private $calculateExpiry;
+
+    /**
      * @param OrdinaryApi\TokenizeFunction $tokenizeFunction
+     * @param CalculateExpiry              $calculateExpiry
      */
     public function __construct(
-        OrdinaryApi\TokenizeFunction $tokenizeFunction
+        OrdinaryApi\TokenizeFunction $tokenizeFunction,
+        CalculateExpiry $calculateExpiry
     ) {
         $this->tokenizeFunction = $tokenizeFunction;
+        $this->calculateExpiry = $calculateExpiry;
     }
 
     /**
@@ -90,7 +99,7 @@ Platform.cache.get(`%1$s`)
             $function['url'],
             $function['cacheSet']['parameter'],
             $function['cacheSet']['keys'][0],
-            $this->calculateExpiry($function['cacheSet']['expiry']),
+            $this->calculateExpiry->calculate($function['cacheSet']['expiry']),
             $fetch->then['resolve']
         );
 
@@ -105,49 +114,47 @@ if (file) {
     
     // Cache not expired?
     if (date + %1$s >= now) {
-        // Priority order: cache, response, nonexistent
+        // Concat order: cache, response, nonexistent
         
-        table = file.table
-            .concat(
-                response.payload.map(({%3$s}) => {
-                    return %3$s;
-                })
-            )
-            .concat(
-                %2$s
-            );
+        table = union(
+            file.table,
+            response.payload.map(({%3$s}) => {
+                return %3$s;
+            }),
+            %2$s
+        );
         
-        response.payload = file.response.payload
-            .concat(
-                response.payload
-            );
+        response.payload = union(
+            file.response.payload,
+            response.payload
+        );
     }
     // Cache expired
     else 
     {
-        // Priority order: response, cache
+        // Concat order: response, cache
         
-        table = response.payload.map(({%3$s}) => {
-            return %3$s;
-        })
-            .concat(
-                file.table
-            );
+        table = union(
+            response.payload.map(({%3$s}) => {
+                return %3$s;
+            }),
+            file.table
+        );
         
-        response.payload = response.payload.concat(
+        response.payload = union(
+            response.payload,
             file.response.payload
         );
     }
 } else {
-    // Priority order: response, nonexistent
+    // Merge order: response, nonexistent
 
-    table = response.payload
-        .map(({%3$s}) => {
+    table = union(
+        response.payload.map(({%3$s}) => {
             return %3$s;
-        })
-        .concat(
-            %2$s
-        );
+        }),
+        %2$s
+    );
 }
     
 // Remove duplicated, priority for the first found
@@ -163,7 +170,7 @@ response.payload = uniqWith(
 
 Platform.cache.set(`%4$s`, {table: table, response: response, date: now}).catch(console.log);
 ',
-                $this->calculateExpiry($function['cacheSet']['expiry']),
+                $this->calculateExpiry->calculate($function['cacheSet']['expiry']),
                 $function['cacheSet']['parameter'],
                 $function['cacheSet']['keys'][0],
                 $function['url']
@@ -173,43 +180,5 @@ Platform.cache.set(`%4$s`, {table: table, response: response, date: now}).catch(
         $tokenization->body->items['fetch'] = $fetch;
 
         return $tokenization;
-    }
-
-    /**
-     * @param string $text
-     *
-     * @return int
-     */
-    private function calculateExpiry($text)
-    {
-        $parts = explode(' ', $text);
-
-        $factor = null;
-
-        if ($parts[1] == 'second' || $parts[1] == 'seconds') {
-            $factor = 1000;
-        }
-
-        if ($parts[1] == 'minute' || $parts[1] == 'minutes') {
-            $factor = 60 * 1000;
-        }
-
-        if ($parts[1] == 'hour' || $parts[1] == 'hours') {
-            $factor = 60 * 60 * 1000;
-        }
-
-        if ($parts[1] == 'day' || $parts[1] == 'days') {
-            $factor = 24 * 60 * 60 * 1000;
-        }
-
-        if ($parts[1] == 'week' || $parts[1] == 'weeks') {
-            $factor = 7 * 24 * 60 * 60 * 1000;
-        }
-
-        if (!$factor) {
-            throw new LogicException($text);
-        }
-
-        return $parts[0] * $factor;
     }
 }

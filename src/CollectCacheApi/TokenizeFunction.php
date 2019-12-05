@@ -3,6 +3,7 @@
 namespace Symsonte\JsApi\CollectCacheApi;
 
 use Symsonte\JsApi\Api;
+use Symsonte\JsApi\CalculateExpiry;
 use Symsonte\JsApi\OrdinaryApi;
 
 /**
@@ -16,12 +17,20 @@ class TokenizeFunction implements Api\TokenizeFunction
     private $tokenizeFunction;
 
     /**
+     * @var CalculateExpiry
+     */
+    private $calculateExpiry;
+
+    /**
      * @param OrdinaryApi\TokenizeFunction $tokenizeFunction
+     * @param CalculateExpiry              $calculateExpiry
      */
     public function __construct(
-        OrdinaryApi\TokenizeFunction $tokenizeFunction
+        OrdinaryApi\TokenizeFunction $tokenizeFunction,
+        CalculateExpiry $calculateExpiry
     ) {
         $this->tokenizeFunction = $tokenizeFunction;
+        $this->calculateExpiry = $calculateExpiry;
     }
 
     /**
@@ -47,20 +56,41 @@ class TokenizeFunction implements Api\TokenizeFunction
         $fetch->layout = sprintf('
 Platform.cache.get(`%1$s`)
     .then((file) => {
+        const now = Date.now(); 
+        
+        let last;
+        
         if (file) {
-            const {table, response} = file;
+            const {date} = file;
             
-            // Just get ids with no cache
-            %2$s = %2$s.filter((%3$s) => {
-                return table.indexOf(`%4$s`) === -1
-            });
+            // Cache not expired?
+            if (date + %4$s >= now) {
+                const {table, response} = file;
             
-            // All in cache?
-            if (%2$s.length === 0) {
-                %5$s
+                // Just get ids with no cache
+                %2$s = %2$s.filter((%3$s) => {
+                    return table.indexOf(%3$s) === -1
+                });
+                
+                // All in cache?
+                if (%2$s.length === 0) {
+                    %5$s
 
-                return;
+                    return;
+                }
+                // Need some ids 
+                else {
+                    // Ok, will call the api with those ids
+                    
+                    last = null;
+                }
             }
+            // Cache expired 
+            else {
+                last = date;
+            }
+        } else {
+            last = null;
         }
         
         %%s
@@ -71,7 +101,9 @@ Platform.cache.get(`%1$s`)
             count($function['cacheSet']['keys']) == 1
                 ? $function['cacheSet']['keys'][0]
                 : sprintf('{%s}', implode(', ', $function['cacheSet']['keys'])),
-            implode('-', $hash),
+            isset($function['cacheSet']['expiry'])
+                ? $this->calculateExpiry->calculate($function['cacheSet']['expiry'])
+                : INF,
             $fetch->then['resolve']
         );
 
@@ -82,34 +114,71 @@ Platform.cache.get(`%1$s`)
 let table;
     
 if (file) {
-    // Priority order: cache, request
-
-    %1$s = %1$s.map((%2$s) => {
-        return `%3$s`
-    });
+    const {date} = file;
     
-    table = file.table
-        .concat(
-            %1$s
+    // Cache not expired?
+    if (date + %1$s >= now) {
+        // Merge order: cache, response, nonexistent
+        
+        table = union(
+            file.table,
+            response.payload.map(({%3$s}) => {
+                return %3$s;
+            }),
+            %2$s
         );
         
-    response.payload = file.response.payload
-        .concat(
+        response.payload = union(
+            file.response.payload,
             response.payload
         );
+    }
+    // Cache expired
+    else 
+    {
+        // Merge order: response, cache
+        
+        table = union(
+            response.payload.map(({%3$s}) => {
+                return %3$s;
+            }),
+            file.table
+        );
+        
+        response.payload = union(
+            response.payload,
+            file.response.payload
+        );
+    }
 } else {
-    // Priority order: request
+    // Merge order: response, nonexistent
 
-    table = %1$s
+    table = union(
+        response.payload.map(({%3$s}) => {
+            return %3$s;
+        }),
+        %2$s
+    );
 }
     
-Platform.cache.set(`%4$s`, {table: table, response: response}).catch(console.log);
+// Remove duplicated, priority for the first found
+
+table = uniq(table);
+
+response.payload = uniqWith(
+    response.payload,
+    (a, b) => {
+        return a.%3$s === b.%3$s;
+    }
+);
+
+Platform.cache.set(`%4$s`, {table: table, response: response, date: now}).catch(console.log);
 ',
+                isset($function['cacheSet']['expiry'])
+                    ? $this->calculateExpiry->calculate($function['cacheSet']['expiry'])
+                    : INF,
                 $function['cacheSet']['parameter'],
-                count($function['cacheSet']['keys']) == 1
-                    ? $function['cacheSet']['keys'][0]
-                    : sprintf('{%s}', implode(', ', $function['cacheSet']['keys'])),
-                implode('-', $hash),
+                $function['cacheSet']['keys'][0],
                 $function['url']
             )
         );

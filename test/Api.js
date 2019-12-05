@@ -1,5 +1,5 @@
 import {api} from "@yosmy/request";
-import {Platform} from "@yosmy/ui";
+import {Platform} from "@yosmy/simple-ui";
 import uniq from "lodash/uniq";
 import uniqWith from "lodash/uniqWith";
 
@@ -184,13 +184,6 @@ const Api = {
                         response.payload = file.response.payload
                             .concat(
                                 response.payload
-                            )
-                            .concat(
-                                ids.map((id) => {
-                                    return {
-                                        id: id
-                                    }
-                                })
                             );
                     }
                     // Cache expired
@@ -280,20 +273,41 @@ const Api = {
         
         Platform.cache.get(`/collect-users`)
             .then((file) => {
+                const now = Date.now(); 
+                
+                let last;
+                
                 if (file) {
-                    const {table, response} = file;
+                    const {date} = file;
                     
-                    // Just get ids with no cache
-                    ids = ids.filter((id) => {
-                        return table.indexOf(id) === -1
-                    });
+                    // Cache not expired?
+                    if (date + 60000 >= now) {
+                        const {table, response} = file;
                     
-                    // All in cache?
-                    if (ids.length === 0) {
-                        resolve(response, onReturn, onUnknownException);
+                        // Just get ids with no cache
+                        ids = ids.filter((id) => {
+                            return table.indexOf(id) === -1
+                        });
+                        
+                        // All in cache?
+                        if (ids.length === 0) {
+                            resolve(response, onReturn, onUnknownException);
         
-                        return;
+                            return;
+                        }
+                        // Need some ids 
+                        else {
+                            // Ok, will call the api with those ids
+                            
+                            last = null;
+                        }
                     }
+                    // Cache expired 
+                    else {
+                        last = date;
+                    }
+                } else {
+                    last = null;
                 }
                 
                 
@@ -312,24 +326,67 @@ const Api = {
                 let table;
                     
                 if (file) {
-                    // Priority order: cache, request
+                    const {date} = file;
+                    
+                    // Cache not expired?
+                    if (date + 60000 >= now) {
+                        // Priority order: cache, response, nonexistent
+                        
+                        table = file.table
+                            .concat(
+                                response.payload.map(({id}) => {
+                                    return id;
+                                })
+                            )
+                            .concat(
+                                ids
+                            );
+                        
+                        response.payload = file.response.payload
+                            .concat(
+                                response.payload
+                            );
+                    }
+                    // Cache expired
+                    else 
+                    {
+                        // Priority order: response, cache
+                        
+                        table = response.payload.map(({id}) => {
+                            return id;
+                        })
+                            .concat(
+                                file.table
+                            );
+                        
+                        response.payload = response.payload.concat(
+                            file.response.payload
+                        );
+                    }
+                } else {
+                    // Priority order: response, nonexistent
                 
-                    table = file.table
+                    table = response.payload
+                        .map(({id}) => {
+                            return id;
+                        })
                         .concat(
                             ids
                         );
-                        
-                    response.payload = file.response.payload
-                        .concat(
-                            response.payload
-                        );
-                } else {
-                    // Priority order: request
-                
-                    table = ids
                 }
                     
-                Platform.cache.set(`/collect-users`, {table: table, response: response}).catch(console.log);
+                // Remove duplicated, priority for the first found
+                
+                table = uniq(table);
+                
+                response.payload = uniqWith(
+                    response.payload,
+                    (a, b) => {
+                        return a.id === b.id;
+                    }
+                );
+                
+                Platform.cache.set(`/collect-users`, {table: table, response: response, date: now}).catch(console.log);
                 
                 resolve(response, onReturn, onUnknownException);    
             })

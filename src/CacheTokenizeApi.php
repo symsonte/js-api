@@ -55,6 +55,7 @@ const hash = (str) => {
         $tokenization->imports[] = "import {Platform} from \"@yosmy/simple-ui\";";
         $tokenization->imports[] = "import uniq from \"lodash/uniq\";";
         $tokenization->imports[] = "import uniqWith from \"lodash/uniqWith\";";
+        $tokenization->imports[] = "import union from \"lodash/union\";";
 
         return new Tokenization(
             $tokenization->imports,
