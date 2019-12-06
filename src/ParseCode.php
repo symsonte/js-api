@@ -91,6 +91,10 @@ class ParseCode
                 throw new LogicException(null, null, $e);
             }
 
+            if (strpos($reflector->getNamespaceName(), $prefix) === false) {
+                continue;
+            }
+
             $cacheSet = false;
             if ($docBlock->hasTag('cache\set')) {
                 /** @var Generic $tag */
@@ -126,41 +130,36 @@ class ParseCode
                     );
 
                     if (!class_exists($class)) {
-                        $composition = null;
+                        $class = null;
 
                         $useStatements = $this->getUseStatements($reflector);
 
                         foreach ($useStatements as $useStatement) {
-                            $first = strstr($type->getFqsen()->getName(), "\\", true);
+                            $class = $useStatement['as'];
 
-                            if (!$first) {
-                                $first = $type->getFqsen()->getName();
-                            }
-
-                            $composition = sprintf(
-                                "%s\\%s",
-                                $useStatement['as'],
-                                $first
-                            );
-
-                            $composition = str_replace(
-                                sprintf("%s\\%s", $first, $first),
-                                $first,
-                                $composition
-                            );
-
-                            if (class_exists($composition)) {
+                            if (class_exists($class)) {
                                 break;
                             }
 
-                            $composition = null;
+                            $parts = explode("\\", (string) $type->getFqsen());
+                            unset($parts[0], $parts[1]);
+                            $class = implode("\\", $parts);
+                            unset($parts);
+
+                            $class = sprintf(
+                                "%s\\%s",
+                                $useStatement['as'],
+                                $class
+                            );
+
+                            if (class_exists($class)) {
+                                break;
+                            }
                         }
 
-                        if ($composition === null) {
-                            throw new LogicException($class);
+                        if ($class === null) {
+                            throw new LogicException($type->getFqsen());
                         }
-
-                        $class = $composition;
                     }
 
                     [$code, $name] = $this->generateExceptionCodeAndName(
@@ -184,7 +183,7 @@ class ParseCode
                 }
             }
 
-            /* Remove domain parameters, like ip and session */
+            /* Remove domain parameters, like ip and device */
 
             $domains = [];
             if ($docBlock->hasTag('domain\parameter')) {
@@ -200,7 +199,7 @@ class ParseCode
                         [
                             'http\request\ip',
                             'http\request\user',
-                            'http\request\session',
+                            'http\request\device',
                         ]
                     )) {
                         continue;

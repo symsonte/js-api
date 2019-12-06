@@ -31,13 +31,13 @@ class RenderApi
 
     /**
      * @param string $prefix
-     * @param array  $server
+     * @param string $server
      *
      * @return string
      */
     public function render(
         string $prefix,
-        array $server
+        string $server
     ) {
         $functions = $this->parseCode->parse(
             $prefix

@@ -44,7 +44,7 @@ class WrapperTokenizeApi implements TokenizeApi
      */
     public function tokenize(
         array $functions,
-        array $server
+        string $server
     ) {
         $tokenization = $this->tokenizeApi->tokenize(
             $functions,
@@ -53,11 +53,11 @@ class WrapperTokenizeApi implements TokenizeApi
 
         $wrapper = sprintf(
             "const WrappedApi = (
-    session, 
+    device, 
     token, 
+    onUnknownException,
     onConnectionException,
-    onServerException,
-    onUnknownException
+    onServerException
 ) => {
     return {
         %s

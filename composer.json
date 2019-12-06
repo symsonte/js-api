@@ -18,9 +18,9 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Symsonte\\JsApi\\Test\\": [
-                "test/setup",
-                "test/src"
+            "Symsonte\\JsApi\\Play\\": [
+                "play/setup",
+                "play/src"
             ]
         }
     },

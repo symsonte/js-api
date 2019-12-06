@@ -8,7 +8,7 @@ use Symsonte\JsApi\TabCode;
 /**
  * @di\service()
  */
-class TokenizeFunction implements Api\TokenizeFunction
+class TokenizeFunction
 {
     /**
      * @var TabCode
@@ -75,12 +75,12 @@ class TokenizeFunction implements Api\TokenizeFunction
             }
         }
 
+        $parameters[] = 'onUnknownException';
         $parameters[] = 'onConnectionException';
         $parameters[] = 'onServerException';
-        $parameters[] = 'onUnknownException';
 
-        if (in_array("http\\request\\session", $function['domains'])) {
-            array_unshift($parameters, 'session');
+        if (in_array("http\\request\\device", $function['domains'])) {
+            array_unshift($parameters, 'device');
         }
 
         return $parameters;
@@ -139,14 +139,14 @@ class TokenizeFunction implements Api\TokenizeFunction
     /**
      * @param array $function
      *
-     * @return Api\Body\FetchTokenization
+     * @return Api\Func\Body\FetchTokenization
      */
     public function buildFetch(array $function)
     {
         $parameters = [
             'server' => sprintf("server + '%s'", $function['url']),
-            'session' => in_array("http\\request\\session", $function['domains'])
-                ? 'session'
+            'device' => in_array("http\\request\\device", $function['domains'])
+                ? 'device'
                 : 'null',
             'token' => $function['auth'] == true
                 ? 'token'
@@ -187,8 +187,7 @@ class TokenizeFunction implements Api\TokenizeFunction
             $this->renderCases($function)
         );
 
-        return new Api\Body\FetchTokenization(
-            '%s',
+        return new Api\Func\Body\FetchTokenization(
             $parameters,
             $then
         );

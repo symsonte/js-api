@@ -1,7 +1,0 @@
-aliases:
-    symsonte.caller: symsonte.ordinary_caller
-    symsonte.authorization.role_collector: symsonte.js_api.test.role_collector
-#    symsonte.js_api.api.tokenize_function: symsonte.js_api.ordinary_api.tokenize_function
-#    symsonte.js_api.api.tokenize_function: symsonte.js_api.collect_cache_api.tokenize_function
-    symsonte.js_api.api.tokenize_function: symsonte.js_api.api.delegator_tokenize_function
-    symsonte.js_api.tokenize_api: symsonte.js_api.wrapper_tokenize_api

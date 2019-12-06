@@ -34,7 +34,7 @@ class OrdinaryTokenizeApi implements TokenizeApi
      */
     public function tokenize(
         array $functions,
-        array $server
+        string $server
     ) {
         $imports = [
             "import {api} from \"@yosmy/request\";",
@@ -42,9 +42,8 @@ class OrdinaryTokenizeApi implements TokenizeApi
 
         $locals = [
             sprintf(
-                "const server = __DEV__ ? '%s' : '%s';",
-                $server['dev'],
-                $server['prod']
+                'const server = %s;',
+                $server
             )
         ];
 
