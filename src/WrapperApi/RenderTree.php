@@ -3,7 +3,6 @@
 namespace Symsonte\JsApi\WrapperApi;
 
 use Symsonte\JsApi\TabCode;
-use LogicException;
 
 /**
  * @di\service()
@@ -79,14 +78,14 @@ class RenderTree
 
         $path = implode('.', $path);
 
-        $render = sprintf("(
+        return sprintf("(
     ...props
 ) => {
     Api.%s(
         %s%s...props,
+        onUnknownException,
         onConnectionException,
-        onServerException,
-        onUnknownException
+        onServerException
     )
 }",
             $path,
@@ -103,8 +102,6 @@ class RenderTree
             )
                 : null
         );
-
-        return $render;
     }
 
     /**

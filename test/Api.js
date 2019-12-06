@@ -2,6 +2,8 @@ import {api} from "@yosmy/request";
 import {Platform} from "@yosmy/simple-ui";
 import uniq from "lodash/uniq";
 import uniqWith from "lodash/uniqWith";
+import union from "lodash/union";
+import unionBy from "lodash/unionBy";
 
 const server = __DEV__ ? 'http://192.168.1.14' : 'https://api.prod.com';
 
@@ -109,143 +111,141 @@ const Api = {
             }
         };
         
-        Platform.cache.get(`/collect-updated-users`)
+        Platform.cache.get("/collect-updated-users")
             .then((file) => {
-                const now = Date.now(); 
+                const now = Date.now();
                 
-                let last;
-                
-                if (file) {
-                    const {date} = file;
+                Promise.all([
+                    // Items with no cache
+                    new Promise((resolve) => {
+                        if (file) {
+                            const {table} = file;
                     
-                    // Cache not expired?
-                    if (date + 60000 >= now) {
-                        const {table, response} = file;
-                    
-                        // Just get ids with no cache
-                        ids = ids.filter((id) => {
-                            return table.indexOf(id) === -1
-                        });
+                            // Just get ids with no cache
+                            ids = ids.filter((id) => {
+                                return table.indexOf(id) === -1
+                            });
+                            
+                            if (ids.length === 0) {
+                                // No need to call api
+                                resolve([], []);
+                                
+                                return;
+                            }
+                        }
                         
-                        // All in cache?
-                        if (ids.length === 0) {
-                            resolve(response, onReturn, onUnknownException);
+                        
+                        api(
+                            server + '/collect-updated-users',
+                            null,
+                            token,
+                            {
+                                ids: ids,
+                                updated: null
+                            }
+                            
+                        )
+                            .then((response) => {
+                                resolve(ids, response.payload);    
+                            })
+                            .catch((response) => {
+                                const {code} = response;
+                                
+                                switch (code) {
+                                    case 'connection':
+                                        onConnectionException();
+                                    
+                                        break;
+                                    case 'server':
+                                        onServerException();
+                                    
+                                        break;
+                                    default:
+                                        onUnknownException(response);
+                                }
+                            });
+                        
+                    }),
+                    // Items with cache
+                    new Promise((resolve) => {
+                        if (!file) {
+                            resolve([], []);
+                        }
+                        
+                        let {date, table, response} = file;
         
+                        // Cache not expired?
+                        if (date + 60000 >= now) {
+                            resolve(table, response.payload);
+                            
                             return;
                         }
-                        // Need some ids 
-                        else {
-                            // Ok, will call the api with those ids
+                        
+                        
+                        api(
+                            server + '/collect-updated-users',
+                            null,
+                            token,
+                            {
+                                ids: table,
+                                updated: date + 60000
+                            }
                             
-                            last = null;
-                        }
-                    }
-                    // Cache expired 
-                    else {
-                        last = date;
-                    }
-                } else {
-                    last = null;
-                }
-                
-                
-        api(
-            server + '/collect-updated-users',
-            null,
-            token,
-            {
-                ids: ids,
-                updated: last
-            }
-            
-        )
-            .then((response) => {
-                
-                // Will contain ids, even nonexistent, as a registry of what cache offers
-                let table;
-                    
-                if (file) {
-                    const {date} = file;
-                    
-                    // Cache not expired?
-                    if (date + 60000 >= now) {
-                        // Priority order: cache, response, nonexistent
+                        )
+                            .then((response) => {
+                                resolve(table, response.payload);    
+                            })
+                            .catch((response) => {
+                                const {code} = response;
+                                
+                                switch (code) {
+                                    case 'connection':
+                                        onConnectionException();
+                                    
+                                        break;
+                                    case 'server':
+                                        onServerException();
+                                    
+                                        break;
+                                    default:
+                                        onUnknownException(response);
+                                }
+                            });
                         
-                        table = file.table
-                            .concat(
-                                response.payload.map(({id}) => {
-                                    return id;
-                                })
-                            )
-                            .concat(
-                                ids
-                            );
-                        
-                        response.payload = file.response.payload
-                            .concat(
-                                response.payload
-                            );
-                    }
-                    // Cache expired
-                    else 
-                    {
-                        // Priority order: response, cache
-                        
-                        table = response.payload.map(({id}) => {
-                            return id;
-                        })
-                            .concat(
-                                file.table
-                            );
-                        
-                        response.payload = response.payload.concat(
-                            file.response.payload
+                    }),
+                ])
+                    .then((result) => {
+                        let table = union(
+                            result[0][0],
+                            result[1][0]
                         );
-                    }
-                } else {
-                    // Priority order: response, nonexistent
-                
-                    table = response.payload
-                        .map(({id}) => {
-                            return id;
-                        })
-                        .concat(
-                            ids
+                        
+                        let payload = unionBy(
+                            result[0][1],
+                            result[1][1],
+                            "id"
                         );
-                }
-                    
-                // Remove duplicated, priority for the first found
-                
-                table = uniq(table);
-                
-                response.payload = uniqWith(
-                    response.payload,
-                    (a, b) => {
-                        return a.id === b.id;
-                    }
-                );
-                
-                Platform.cache.set(`/collect-updated-users`, {table: table, response: response, date: now}).catch(console.log);
-                
-                resolve(response, onReturn, onUnknownException);    
-            })
-            .catch((response) => {
-                const {code} = response;
-                
-                switch (code) {
-                    case 'connection':
-                        onConnectionException();
-                    
-                        break;
-                    case 'server':
-                        onServerException();
-                    
-                        break;
-                    default:
-                        onUnknownException(response);
-                }
-            });
-        
+                        
+                        // Remove duplicated
+                        
+                        table = uniq(table);
+                        
+                        payload = uniqWith(
+                            payload,
+                            (a, b) => {
+                                return a.id === b.id;
+                            }
+                        );
+                        
+                        const response = {
+                            code: "return",
+                            payload: payload
+                        };
+                        
+                        Platform.cache.set(`/collect-updated-users`, {table: table, response: response, date: now}).catch(console.log);
+                        
+                        resolve(response, onReturn, onUnknownException);
+                    });
             });
         
     },
@@ -271,142 +271,139 @@ const Api = {
             }
         };
         
-        Platform.cache.get(`/collect-users`)
+        Platform.cache.get("/collect-users")
             .then((file) => {
-                const now = Date.now(); 
+                const now = Date.now();
                 
-                let last;
-                
-                if (file) {
-                    const {date} = file;
+                Promise.all([
+                    // Items with no cache
+                    new Promise((resolve) => {
+                        if (file) {
+                            const {table} = file;
                     
-                    // Cache not expired?
-                    if (date + 60000 >= now) {
-                        const {table, response} = file;
-                    
-                        // Just get ids with no cache
-                        ids = ids.filter((id) => {
-                            return table.indexOf(id) === -1
-                        });
+                            // Just get ids with no cache
+                            ids = ids.filter((id) => {
+                                return table.indexOf(id) === -1
+                            });
+                            
+                            if (ids.length === 0) {
+                                // No need to call api
+                                resolve([], []);
+                                
+                                return;
+                            }
+                        }
                         
-                        // All in cache?
-                        if (ids.length === 0) {
-                            resolve(response, onReturn, onUnknownException);
+                        
+                        api(
+                            server + '/collect-users',
+                            null,
+                            token,
+                            {
+                                ids: ids
+                            }
+                            
+                        )
+                            .then((response) => {
+                                resolve(ids, response.payload);    
+                            })
+                            .catch((response) => {
+                                const {code} = response;
+                                
+                                switch (code) {
+                                    case 'connection':
+                                        onConnectionException();
+                                    
+                                        break;
+                                    case 'server':
+                                        onServerException();
+                                    
+                                        break;
+                                    default:
+                                        onUnknownException(response);
+                                }
+                            });
+                        
+                    }),
+                    // Items with cache
+                    new Promise((resolve) => {
+                        if (!file) {
+                            resolve([], []);
+                        }
+                        
+                        let {date, table, response} = file;
         
+                        // Cache not expired?
+                        if (date + 60000 >= now) {
+                            resolve(table, response.payload);
+                            
                             return;
                         }
-                        // Need some ids 
-                        else {
-                            // Ok, will call the api with those ids
+                        
+                        
+                        api(
+                            server + '/collect-users',
+                            null,
+                            token,
+                            {
+                                ids: table
+                            }
                             
-                            last = null;
-                        }
-                    }
-                    // Cache expired 
-                    else {
-                        last = date;
-                    }
-                } else {
-                    last = null;
-                }
-                
-                
-        api(
-            server + '/collect-users',
-            null,
-            token,
-            {
-                ids: ids
-            }
-            
-        )
-            .then((response) => {
-                
-                // Will contain ids, even nonexistent, as a registry of what cache offers
-                let table;
-                    
-                if (file) {
-                    const {date} = file;
-                    
-                    // Cache not expired?
-                    if (date + 60000 >= now) {
-                        // Priority order: cache, response, nonexistent
+                        )
+                            .then((response) => {
+                                resolve(table, response.payload);    
+                            })
+                            .catch((response) => {
+                                const {code} = response;
+                                
+                                switch (code) {
+                                    case 'connection':
+                                        onConnectionException();
+                                    
+                                        break;
+                                    case 'server':
+                                        onServerException();
+                                    
+                                        break;
+                                    default:
+                                        onUnknownException(response);
+                                }
+                            });
                         
-                        table = file.table
-                            .concat(
-                                response.payload.map(({id}) => {
-                                    return id;
-                                })
-                            )
-                            .concat(
-                                ids
-                            );
-                        
-                        response.payload = file.response.payload
-                            .concat(
-                                response.payload
-                            );
-                    }
-                    // Cache expired
-                    else 
-                    {
-                        // Priority order: response, cache
-                        
-                        table = response.payload.map(({id}) => {
-                            return id;
-                        })
-                            .concat(
-                                file.table
-                            );
-                        
-                        response.payload = response.payload.concat(
-                            file.response.payload
+                    }),
+                ])
+                    .then((result) => {
+                        let table = union(
+                            result[0][0],
+                            result[1][0]
                         );
-                    }
-                } else {
-                    // Priority order: response, nonexistent
-                
-                    table = response.payload
-                        .map(({id}) => {
-                            return id;
-                        })
-                        .concat(
-                            ids
+                        
+                        let payload = unionBy(
+                            result[0][1],
+                            result[1][1],
+                            "id"
                         );
-                }
-                    
-                // Remove duplicated, priority for the first found
-                
-                table = uniq(table);
-                
-                response.payload = uniqWith(
-                    response.payload,
-                    (a, b) => {
-                        return a.id === b.id;
-                    }
-                );
-                
-                Platform.cache.set(`/collect-users`, {table: table, response: response, date: now}).catch(console.log);
-                
-                resolve(response, onReturn, onUnknownException);    
-            })
-            .catch((response) => {
-                const {code} = response;
-                
-                switch (code) {
-                    case 'connection':
-                        onConnectionException();
-                    
-                        break;
-                    case 'server':
-                        onServerException();
-                    
-                        break;
-                    default:
-                        onUnknownException(response);
-                }
-            });
-        
+                        
+                        // Remove duplicated
+                        
+                        table = uniq(table);
+                        
+                        payload = uniqWith(
+                            payload,
+                            (a, b) => {
+                                return a.id === b.id;
+                            }
+                        );
+                        
+                        const response = {
+                            code: "return",
+                            payload: payload
+                        };
+                        
+                        Platform.cache.set(`/collect-users`, {table: table, response: response, date: now}).catch(console.log);
+                        
+                        resolve(response, onReturn, onUnknownException);
+                    });
             });
         
     },

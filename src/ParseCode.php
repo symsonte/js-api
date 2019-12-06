@@ -91,6 +91,10 @@ class ParseCode
                 throw new LogicException(null, null, $e);
             }
 
+            if (strpos($reflector->getNamespaceName(), $prefix) === false) {
+                continue;
+            }
+
             $cacheSet = false;
             if ($docBlock->hasTag('cache\set')) {
                 /** @var Generic $tag */

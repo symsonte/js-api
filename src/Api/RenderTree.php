@@ -10,12 +10,7 @@ use Symsonte\JsApi\TabCode;
 class RenderTree
 {
     /**
-     * @var TokenizeFunction
-     */
-    private $tokenizeFunction;
-
-    /**
-     * @var RenderFunction
+     * @var DelegatorRenderFunction
      */
     private $renderFunction;
 
@@ -25,16 +20,13 @@ class RenderTree
     private $tabCode;
 
     /**
-     * @param TokenizeFunction $tokenizeFunction
-     * @param RenderFunction   $renderFunction
-     * @param TabCode          $tabCode
+     * @param DelegatorRenderFunction $renderFunction
+     * @param TabCode                 $tabCode
      */
     public function __construct(
-        TokenizeFunction $tokenizeFunction,
-        RenderFunction $renderFunction,
+        DelegatorRenderFunction $renderFunction,
         TabCode $tabCode
     ) {
-        $this->tokenizeFunction = $tokenizeFunction;
         $this->renderFunction = $renderFunction;
         $this->tabCode = $tabCode;
     }
@@ -52,12 +44,8 @@ class RenderTree
             $tree[$name] = sprintf('%s: ', $name);
 
             if (isset($function['url'])) {
-                $tokenization = $this->tokenizeFunction->tokenize(
-                    $function
-                );
-
                 $tree[$name] .= $this->renderFunction->render(
-                    $tokenization
+                    $function
                 );
             } else {
                 $tree[$name] .= sprintf("%s\n}",
