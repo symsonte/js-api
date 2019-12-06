@@ -55,9 +55,9 @@ class WrapperTokenizeApi implements TokenizeApi
             "const WrappedApi = (
     session, 
     token, 
+    onUnknownException,
     onConnectionException,
-    onServerException,
-    onUnknownException
+    onServerException
 ) => {
     return {
         %s

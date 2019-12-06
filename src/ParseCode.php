@@ -91,6 +91,10 @@ class ParseCode
                 throw new LogicException(null, null, $e);
             }
 
+            if (strpos($reflector->getNamespaceName(), $prefix) === false) {
+                continue;
+            }
+
             $cacheSet = false;
             if ($docBlock->hasTag('cache\set')) {
                 /** @var Generic $tag */
@@ -126,41 +130,30 @@ class ParseCode
                     );
 
                     if (!class_exists($class)) {
-                        $composition = null;
+                        $class = null;
 
                         $useStatements = $this->getUseStatements($reflector);
 
                         foreach ($useStatements as $useStatement) {
-                            $first = strstr($type->getFqsen()->getName(), "\\", true);
+                            $parts = explode("\\", (string) $type->getFqsen());
+                            unset($parts[0], $parts[1]);
+                            $class = implode("\\", $parts);
+                            unset($parts);
 
-                            if (!$first) {
-                                $first = $type->getFqsen()->getName();
-                            }
-
-                            $composition = sprintf(
+                            $class = sprintf(
                                 "%s\\%s",
                                 $useStatement['as'],
-                                $first
+                                $class
                             );
 
-                            $composition = str_replace(
-                                sprintf("%s\\%s", $first, $first),
-                                $first,
-                                $composition
-                            );
-
-                            if (class_exists($composition)) {
+                            if (class_exists($class)) {
                                 break;
                             }
-
-                            $composition = null;
                         }
 
-                        if ($composition === null) {
-                            throw new LogicException($class);
+                        if ($class === null) {
+                            throw new LogicException($type->getFqsen());
                         }
-
-                        $class = $composition;
                     }
 
                     [$code, $name] = $this->generateExceptionCodeAndName(

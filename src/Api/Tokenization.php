@@ -2,8 +2,6 @@
 
 namespace Symsonte\JsApi\Api;
 
-use http\Message\Body;
-
 class Tokenization
 {
     /**

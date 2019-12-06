@@ -1,14 +1,9 @@
 <?php
 
-namespace Symsonte\JsApi\Api\Body;
+namespace Symsonte\JsApi\Api\Func\Body;
 
 class FetchTokenization
 {
-    /**
-     * @var string
-     */
-    public $layout;
-
     /**
      * @var string[]
      */
@@ -20,16 +15,13 @@ class FetchTokenization
     public $then;
 
     /**
-     * @param string   $layout
      * @param string[] $parameters
      * @param string[] $then
      */
     public function __construct(
-        string $layout,
         array $parameters,
         array $then
     ) {
-        $this->layout = $layout;
         $this->parameters = $parameters;
         $this->then = $then;
     }

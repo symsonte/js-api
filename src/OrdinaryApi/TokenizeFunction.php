@@ -8,7 +8,7 @@ use Symsonte\JsApi\TabCode;
 /**
  * @di\service()
  */
-class TokenizeFunction implements Api\TokenizeFunction
+class TokenizeFunction
 {
     /**
      * @var TabCode
@@ -75,9 +75,9 @@ class TokenizeFunction implements Api\TokenizeFunction
             }
         }
 
+        $parameters[] = 'onUnknownException';
         $parameters[] = 'onConnectionException';
         $parameters[] = 'onServerException';
-        $parameters[] = 'onUnknownException';
 
         if (in_array("http\\request\\session", $function['domains'])) {
             array_unshift($parameters, 'session');
@@ -139,7 +139,7 @@ class TokenizeFunction implements Api\TokenizeFunction
     /**
      * @param array $function
      *
-     * @return Api\Body\FetchTokenization
+     * @return Api\Func\Body\FetchTokenization
      */
     public function buildFetch(array $function)
     {
@@ -187,8 +187,7 @@ class TokenizeFunction implements Api\TokenizeFunction
             $this->renderCases($function)
         );
 
-        return new Api\Body\FetchTokenization(
-            '%s',
+        return new Api\Func\Body\FetchTokenization(
             $parameters,
             $then
         );

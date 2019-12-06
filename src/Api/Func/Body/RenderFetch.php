@@ -1,6 +1,6 @@
 <?php
 
-namespace Symsonte\JsApi\Api;
+namespace Symsonte\JsApi\Api\Func\Body;
 
 use Symsonte\JsApi\Api;
 use Symsonte\JsApi\TabCode;
@@ -8,7 +8,7 @@ use Symsonte\JsApi\TabCode;
 /**
  * @di\service()
  */
-class RenderFunction
+class RenderFetch
 {
     /**
      * @var TabCode
@@ -25,16 +25,13 @@ class RenderFunction
     }
 
     /**
-     * @param Tokenization $tokenization
+     * @param FetchTokenization $tokenization
      *
      * @return string
      */
     public function render(
-        Tokenization $tokenization
+        FetchTokenization $tokenization
     ) {
-        /** @var Api\Body\FetchTokenization $item */
-        $fetch = $tokenization->body->items['fetch'];
-
         $parameters = sprintf("
 %s,
 %s,
@@ -43,18 +40,18 @@ class RenderFunction
     %s
 }
 ",
-            $fetch->parameters['server'],
-            $fetch->parameters['session'],
-            $fetch->parameters['token'],
+            $tokenization->parameters['server'],
+            $tokenization->parameters['session'],
+            $tokenization->parameters['token'],
             $this->tabCode->tab(
-                implode(",\n", $fetch->parameters['payload']),
+                implode(",\n", $tokenization->parameters['payload']),
                 1
             )
         );
 
-        $then = implode("\n", $fetch->then);
+        $then = implode("\n", $tokenization->then);
 
-        $then = sprintf("
+        return sprintf("
 api(%s\n)
     .then((response) => {
         %s    
@@ -85,29 +82,5 @@ api(%s\n)
                 2
             )
         );
-
-        $fetch = sprintf(
-            $fetch->layout,
-            $then
-        );
-
-        $tokenization->body->items['fetch'] = $fetch;
-
-        $render = sprintf("(
-    %s
-) => {
-    %s
-}",
-            $this->tabCode->tab(
-                implode(",\n", $tokenization->parameters),
-                1
-            ),
-            $this->tabCode->tab(
-                implode("\n", $tokenization->body->items),
-                1
-            )
-        );
-
-        return $render;
     }
 }
